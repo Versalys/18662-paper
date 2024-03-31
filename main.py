@@ -2,14 +2,14 @@ from torch import nn
 import torch
 from torch.nn import functional as F
 from torch.utils.data import DataLoader
-# from hids_model import hidsmodel
+from hids_model import HidsModel
 from os import listdir
 
 
 NORMAL_ROOT = 'data/ADFA-LD/Training_Data_Master/'
 ATTACK_ROOT = 'data/ADFA-LD/Attack_Data_Master/'
 ATTACKS = ['AddUser', 'Hydra_FTP', 'Hydra_SSH', 'Java_Meterpreter', 'Meterpreter', 'Web_Shell']
-NUM_FEATURES = 265
+NUM_FEATURES = 341
 
 
 def assemble_attack_data(arch_root=ATTACK_ROOT):
@@ -33,7 +33,7 @@ def assemble_normal_data(root=NORMAL_ROOT):
     return data
 
 
-def create_dataloader(attack_data, normal_data, excl={}):
+def create_dataloader(attack_data, normal_data, excl=set()):
     all_attack = []
     for name, instances in attack_data.items():
         if name in excl:
@@ -43,18 +43,40 @@ def create_dataloader(attack_data, normal_data, excl={}):
     all_normal = list(zip(normal_data, [0 for _ in range(len(normal_data))]))
 
     full_data = all_attack + all_normal
-    print(full_data[-1])
     return DataLoader(full_data, batch_size=1, shuffle=True)
 
 
-def train_model():
-    model = hidsmodel()
+def make_one_hot(n, num_classes):
+    print(n)
+    tensor = F.one_hot(n, num_classes)
+    return tensor.float()
 
+
+def train_model(dataloader, n_epochs):
+    model = HidsModel(NUM_FEATURES, 128, 1)
+    criterion = nn.BCELoss()
+    optimizer = torch.optim.Adam(model.parameters())
+    for epoch in range(n_epochs):
+        cumulative_loss = 0
+        for x, y in dataloader:
+            optimizer.zero_grad()
+            hot_x = make_one_hot(torch.LongTensor(x), NUM_FEATURES)
+            print(hot_x)
+            output = model(hot_x)
+            loss = criterion(output, y)
+            loss.backward()
+            optimizer.step()
+
+            cumulative_loss += loss.item()
+        print(f'Epoch [{epoch}] : {cumulative_loss}')
+
+
+def main():
+    attack = assemble_attack_data()
+    normal = assemble_normal_data()
+    dataloader = create_dataloader(attack, normal)
+    train_model(dataloader, 15)
 
 
 if __name__ == '__main__':
-    n_data = assemble_normal_data()
-    a_data = assemble_attack_data()
-    dataloader = create_dataloader(a_data, n_data)
-    for x, y in dataloader:
-        print(y)
+    main()
