@@ -1,3 +1,11 @@
+# Reasoning Based AI for Malware Detection Through State Abstraction
+# Written by Aidan Erickson
+#
+# This code includes the training code and helper functions for training a model based on the
+# ADFA-LD dataset. This is part of an effort to research the ability of symbolic models (like the one
+# in this case using syscalls to describe system state) to generalize to unseen cyberattacks.
+
+
 from torch import nn
 import torch
 from torch.nn import functional as F

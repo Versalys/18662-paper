@@ -1,3 +1,10 @@
+# Reasoning Based AI for Malware Detection Through State Abstraction
+# Written by Aidan Erickson
+#
+# This code includes the LSTM based model for the paper above. Additional information
+# can be found in main.py.
+
+
 from torch import nn
 import torch
 from torch.nn import functional as F
