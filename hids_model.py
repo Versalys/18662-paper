@@ -2,22 +2,23 @@ from torch import nn
 import torch
 from torch.nn import functional as F
 
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu") # GPU acceleration
 # TODO: Look at hidden states. Update lstm to not pass tuple. Use DL homework.
 
 class HidsModel(nn.Module):
-    def __init__(self, input_dim, hidden_dim, output_dim, num_layers=50):
+    def __init__(self, vocab_size, hidden_dim, output_dim, embed_dim, num_layers=5):
         super().__init__()
 
-        self.l_mods = nn.Sequential(
-            nn.LSTM(input_dim, hidden_dim, num_layers=num_layers, batch_first=True)
-        )
+        self.embed = nn.Embedding(vocab_size, embed_dim, device=DEVICE)
+        self.lstm = nn.LSTM(embed_dim, hidden_dim, num_layers=num_layers, batch_first=True, device=DEVICE)
 
-        self.linear = nn.Linear(hidden_dim, output_dim)
+        self.linear = nn.Linear(hidden_dim, output_dim, device=DEVICE)
         self.sigmoid = nn.Sigmoid()
 
+
     def forward(self, x):
-        for mod in self.l_mods:
-            x, _ = mod(x)
-        x = self.linear(x)
+        x = self.embed(x)
+        x, _ = self.lstm(x)
+        x = self.linear(x)[:, -1]
         x = self.sigmoid(x)
         return x
