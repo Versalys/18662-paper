@@ -52,7 +52,7 @@ def create_dataloader(attack_data, normal_data, excl=set()):
     all_normal = list(zip(normal_data, [0 for _ in range(len(normal_data))]))
 
     full_data = all_attack + all_normal
-    print(f'Dataset: Attack: {len(all_attack)}, Normal: {len(all_normal)}')
+    print(f'Dataset: Attack: {len(all_attack)}, Normal: {len(all_normal)}, Exclude: {excl}')
     return DataLoader(full_data, batch_size=1, shuffle=True)
 
 
@@ -108,21 +108,35 @@ def train_model(dataloader, n_epochs):
 
 
 def test_model(model, dataloader):
-    model.eval()
-    correct = 0
-    for x, y in tqdm(dataloader, desc='<Testing model>'):
-        x_tensor = make_simple_dense(x)
-        output = model(x_tensor)[0]
-        choice = 0 if output <= .5 else 1
-        if choice == y:
-            correct += 1
+    with torch.no_grad():
+        model.eval()
+        correct = 0
+        for x, y in tqdm(dataloader, desc='<Testing model>'):
+            x_tensor = make_simple_dense(x)
+            output = model(x_tensor)[0]
+            choice = 0 if output <= .5 else 1
+            if choice == y:
+                correct += 1
     accuracy = correct / len(dataloader)
     print(f"Accuracy: {round(accuracy*100, 3)}%")
+    return accuracy
 
+# run the training, excluding one category each time. Then, test on that category.
+def run_segmented_test_suite(n_epochs):
+    attack_data = assemble_attack_data()
+    normal_data = assemble_normal_data()
+    results = {}
+    for attack_name in attack_data.keys():
+        excl = {attack_name} # exclude this from training
+        train_dataloader = create_dataloader(attack_data, normal_data, excl=excl)
+        model = train_model(train_dataloader, n_epochs)
+        attack_dataloader = DataLoader(list(zip(attack_data[attack_name], [1]*len(attack_data[attack_name]))))
+        acc = test_model(model, attack_dataloader)
+        results[attack_name] = acc
 
-def run_segmented_test_suite(model): # run the training on each 
-    
-
+    print('\nFinal Results:')
+    for name, acc in results.items():
+        print(f'{name}: {round(acc*100, 3)}%')
 
 def main():
     attack = assemble_attack_data()
@@ -138,4 +152,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    run_segmented_test_suite(1)
